@@ -232,8 +232,4 @@ The editor can handle various response formats:
   - Fetch API
   - CSS Grid/Flexbox
 
-## Security Considerations
 
-- The editor makes cross-origin requests, so your server needs to have appropriate CORS headers configured
-- No input sanitization is performed on loaded code - ensure your server implements proper security measures
-- URLs are not validated beyond basic format checking - implement additional validation if needed
