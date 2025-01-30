@@ -1,37 +1,239 @@
 # JavaScript Editor
 
-A simple, single-page JavaScript editor for loading, editing, and saving code.
+A lightweight, single-file JavaScript editor with remote code loading and saving capabilities. Built with CodeMirror and designed for IPFS deployment.
+
+![JavaScript Editor Screenshot](/api/placeholder/800/400)
 
 ## Features
 
-*   **Load Code:** Load JavaScript code from a URL via a GET request.
-*   **Edit Code:** Modify the code using the built-in editor (CodeMirror).
-*   **Send Code:** Save modified code back to a URL via a POST request.
-*   **JSON Response:** View responses (including errors) in JSON format.
-*   **Dynamic URLs:** Load and save to different URLs.
-*   **Simple UI:** Minimalistic user interface using indexing.co brand style.
-*   **Solid Buttons:** Buttons with a solid green background.
+- **Single File Architecture**: Entire application contained in one HTML file
+- **Code Editing**:
+  - Syntax highlighting for JavaScript
+  - Line numbers
+  - Auto-indentation
+  - Line wrapping
+  - Tab size: 2 spaces
+  
+- **Remote Operations**:
+  - Load code from any URL via GET request
+  - Save/send code to any URL via POST request
+  - JSON response visualization
+  
+- **User Interface**:
+  - Clean, minimal design
+  - Loading states with spinners
+  - Error and success state handling
+  - Responsive layout
+  
+- **Keyboard Shortcuts**:
+  - `Ctrl/Cmd + S`: Send code to configured URL
 
-## How to Use
+## Dependencies
 
-1.  **Run the Server:**
-    *   Navigate to the project directory.
-    *   Run `npm install express body-parser cors`
-    *   Run `node server.js`
+The editor uses CDN-hosted dependencies:
+- CodeMirror 5.65.2 (core)
+- CodeMirror JavaScript mode
+- Cabinet Grotesk font (via Fontshare)
 
-2.  **Open the Editor:**
-    *   Open your web browser and go to `http://localhost:3000/`.
+## Testing with Dummy HTTP Server
 
-3.  **Load Code:**
-    *   Enter a URL into the "Enter URL to load code" field (e.g., `http://localhost:3000/main.js`).
-    *   Click the "Load" button. The code from the given URL will appear in the editor.
+### Python HTTP Server
 
-4.  **Edit Code:**
-    *   Modify the JavaScript code in the editor.
+1. Create a test endpoint file (e.g., `server.py`):
+```python
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
+from urllib.parse import parse_qs, urlparse
 
-5.  **Send Code:**
-    *   Enter the URL into the "Enter URL to send code" field (e.g., `http://localhost:3000/main.js`).
-    *   Click the "Send" button. The modified code will be saved to the specified URL, replacing the original content.
+class TestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/test':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(b'console.log("Test code loaded!");')
+        else:
+            self.send_response(404)
+            self.end_headers()
+            
+    def do_POST(self):
+        if self.path == '/test':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                "status": "success",
+                "message": "Code received",
+                "size": len(post_data)
+            }
+            self.wfile.write(json.dumps(response).encode())
+            
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
 
-6.  **Response**
-    *   After you sent your code, the server response will be displayed on the response section.
+httpd = HTTPServer(('localhost', 3000), TestHandler)
+print("Server running on http://localhost:3000")
+httpd.serve_forever()
+```
+
+2. Start the server:
+```bash
+python server.py
+```
+
+3. Open the editor in your browser and use these test URLs:
+   - Load URL: `http://localhost:3000/test`
+   - Send URL: `http://localhost:3000/test`
+
+### Node.js HTTP Server
+
+1. Create a test endpoint file (e.g., `server.js`):
+```javascript
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+    // Enable CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    // Handle OPTIONS request
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+
+    // Handle GET request
+    if (req.method === 'GET' && req.url === '/test') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('console.log("Test code loaded!");');
+        return;
+    }
+
+    // Handle POST request
+    if (req.method === 'POST' && req.url === '/test') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        req.on('end', () => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                status: 'success',
+                message: 'Code received',
+                size: body.length
+            }));
+        });
+        return;
+    }
+
+    // Handle 404
+    res.writeHead(404);
+    res.end();
+});
+
+server.listen(3000, () => {
+    console.log('Server running on http://localhost:3000');
+});
+```
+
+2. Start the server:
+```bash
+node server.js
+```
+
+3. Open the editor in your browser and use these test URLs:
+   - Load URL: `http://localhost:3000/test`
+   - Send URL: `http://localhost:3000/test`
+
+## Deployment
+
+### IPFS Deployment
+
+1. Save the HTML file (e.g., `index.html`)
+2. Upload to IPFS using your preferred method:
+
+```bash
+# Using IPFS CLI
+ipfs add index.html
+
+# Using Pinata or similar services
+# Upload the file through their web interface
+```
+
+### Traditional Web Server
+
+Simply place the HTML file in your web server's public directory.
+
+## API Integration
+
+### Loading Code
+
+The editor makes a GET request to the specified URL:
+
+```javascript
+GET <user-specified-url>
+
+// Expected response: Plain text/JavaScript code
+```
+
+### Saving Code
+
+The editor sends a POST request with the following format:
+
+```javascript
+POST <user-specified-url>
+Content-Type: application/json
+
+{
+    "code": "// Your JavaScript code here"
+}
+
+// Expected response: JSON object
+```
+
+### Response Handling
+
+The editor can handle various response formats:
+
+```javascript
+// Success response example
+{
+    "status": "success",
+    "message": "Code saved successfully"
+}
+
+// Error response example
+{
+    "status": "error",
+    "message": "Failed to save code",
+    "details": "Error details here"
+}
+```
+
+## Browser Support
+
+- Chrome/Edge (latest)
+- Firefox (latest)
+- Safari (latest)
+- Other modern browsers that support:
+  - ES6+ JavaScript
+  - Fetch API
+  - CSS Grid/Flexbox
+
+## Security Considerations
+
+- The editor makes cross-origin requests, so your server needs to have appropriate CORS headers configured
+- No input sanitization is performed on loaded code - ensure your server implements proper security measures
+- URLs are not validated beyond basic format checking - implement additional validation if needed
