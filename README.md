@@ -2,7 +2,7 @@
 
 A lightweight, single-file JavaScript editor with remote code loading and saving capabilities. Built with CodeMirror and designed for IPFS deployment.
 
-![JavaScript Editor Screenshot](/api/placeholder/800/400)
+
 
 ## Features
 
