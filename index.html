@@ -17,7 +17,9 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
+            min-height: 100vh;
         }
+
         .container {
             max-width: 800px;
             width: 100%;
@@ -28,69 +30,109 @@
             margin-bottom: 20px;
             font-weight: 700;
             font-size: 2.5rem;
-            color:#000000;
+            color: #000000;
         }
 
-       #editor {
-          width: 100%;
-          height: 400px;
-          border: 2px solid #000000;
-          border-radius: 8px;
-          margin-bottom: 20px;
-          overflow: hidden;
+        #editor {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #000000;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
         }
+
         .CodeMirror {
-          height: 100%;
-          font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-          font-size: 14px;
-          background-color: #ffffff;
+            height: 100%;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            background-color: #ffffff;
         }
-       .CodeMirror-scroll {
-          overflow-y: hidden;
-          overflow-x: auto;
+
+        .CodeMirror-scroll {
+            overflow-y: hidden;
+            overflow-x: auto;
         }
+
         .input-group {
             display: flex;
             margin-bottom: 10px;
+            gap: 4px;
         }
-         input[type="text"] {
+
+        input[type="text"] {
             flex-grow: 1;
             padding: 10px;
             border: 2px solid #000000;
-            border-radius: 8px 0 0 8px;
+            border-radius: 8px;
             font-family: 'Cabinet Grotesk', sans-serif;
             font-size: 14px;
         }
+
         button {
             padding: 10px 20px;
-            background-color: #98F120; /* Green color */
+            background-color: #98F120;
             color: #000000;
             border: 2px solid #000000;
-            border-radius: 0 8px 8px 0;
+            border-radius: 8px;
             cursor: pointer;
             font-family: 'Cabinet Grotesk', sans-serif;
             font-size: 14px;
             font-weight: 700;
-            transition: none; /* Remove the transition effect*/
+            transition: background-color 0.1s;
             white-space: nowrap;
         }
-    
-       #response {
-           white-space: pre-wrap;
-           font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-           background-color: #FFFFFF;
-           border: 2px solid #000000;
-           border-radius: 8px;
-           padding: 15px;
-           margin-top: 20px;
-           font-size: 14px;
-           overflow-x: auto;
-    
-       }
-       .error {
-           color: red;
-           font-weight: bold;
-       }
+
+        button:hover {
+            background-color: #7ed010;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #response {
+            white-space: pre-wrap;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            background-color: #FFFFFF;
+            border: 2px solid #000000;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 14px;
+            overflow-x: auto;
+            min-height: 100px;
+        }
+
+        .error {
+            color: #dc2626;
+        }
+
+        .success {
+            color: #059669;
+        }
+
+        .loading {
+            opacity: 0.7;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #000000;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 <body>
@@ -98,68 +140,115 @@
         <h1>JavaScript Editor</h1>
         <div id="editor"></div>
         <div class="input-group">
-            <input type="text" id="loadUrl" placeholder="Enter URL to load code" value="http://localhost:3000/test">
-            <button onclick="loadCode()">Load</button>
+            <input type="text" id="loadUrl" placeholder="Enter URL to load code">
+            <button id="loadButton" onclick="loadCode()">Load</button>
         </div>
         <div class="input-group">
-            <input type="text" id="sendUrl" placeholder="Enter URL to send code" value="http://localhost:3000/test">
-            <button onclick="sendCode()">Send</button>
+            <input type="text" id="sendUrl" placeholder="Enter URL to send code">
+            <button id="sendButton" onclick="sendCode()">Send</button>
         </div>
-         <pre id="response"></pre>
+        <pre id="response"></pre>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
     <script>
         let editor;
+        let isLoading = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             editor = CodeMirror(document.getElementById('editor'), {
                 mode: 'javascript',
                 theme: 'default',
                 lineNumbers: true,
-                autofocus: true
+                autofocus: true,
+                tabSize: 2,
+                indentWithTabs: false,
+                lineWrapping: true,
+                extraKeys: {
+                    'Ctrl-S': sendCode,
+                    'Cmd-S': sendCode
+                }
             });
+
+            // Set initial placeholder text
+            editor.setValue('// Write your JavaScript code here\n');
         });
 
+        function setLoading(loading) {
+            isLoading = loading;
+            const loadButton = document.getElementById('loadButton');
+            const sendButton = document.getElementById('sendButton');
+            
+            loadButton.disabled = loading;
+            sendButton.disabled = loading;
+
+            if (loading) {
+                loadButton.innerHTML = 'Loading... <span class="spinner"></span>';
+                sendButton.innerHTML = 'Sending... <span class="spinner"></span>';
+            } else {
+                loadButton.textContent = 'Load';
+                sendButton.textContent = 'Send';
+            }
+        }
 
         async function loadCode() {
+            if (isLoading) return;
+
             const url = document.getElementById('loadUrl').value.trim();
             if (!url) {
-                displayResponse({ error: 'Please enter a URL to load code from.' }, true);
+                displayResponse({ error: 'Please enter a URL to load code from.' }, 'error');
                 return;
             }
 
             try {
-                 displayResponse({info: 'Loading code...'});
-                const response = await fetch(url);
+                setLoading(true);
+                displayResponse({ status: 'Loading code...' });
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/javascript, text/javascript, text/plain'
+                    }
+                });
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
                 }
+
                 const code = await response.text();
                 editor.setValue(code);
-                 displayResponse({ success: 'Code loaded successfully' });
+                displayResponse({ status: 'success', message: 'Code loaded successfully' }, 'success');
             } catch (error) {
                 console.error('Error loading code:', error);
-                displayResponse({ error: 'Failed to load code.', details: error.message }, true);
+                displayResponse({ 
+                    status: 'error',
+                    message: 'Failed to load code',
+                    details: error.message 
+                }, 'error');
+            } finally {
+                setLoading(false);
             }
         }
 
-       async function sendCode() {
+        async function sendCode() {
+            if (isLoading) return;
+
             const url = document.getElementById('sendUrl').value.trim();
             if (!url) {
-                displayResponse({ error: 'Please enter a URL to send code to.' }, true);
+                displayResponse({ error: 'Please enter a URL to send code to.' }, 'error');
                 return;
             }
 
             const code = editor.getValue();
-            if(!code.trim()) {
-               displayResponse({error: 'No code to send.'}, true);
-              return;
+            if (!code.trim()) {
+                displayResponse({ error: 'No code to send.' }, 'error');
+                return;
             }
-             displayResponse({info: 'Sending code...'});
 
             try {
+                setLoading(true);
+                displayResponse({ status: 'Sending code...' });
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -168,29 +257,38 @@
                     body: JSON.stringify({ code }),
                 });
 
-                if(!response.ok){
-                   const errorText = await response.text();
-                     throw new Error(`HTTP error! status: ${response.status} ${response.statusText}  ${errorText}`);
+                const contentType = response.headers.get('content-type');
+                let responseData;
+
+                if (contentType && contentType.includes('application/json')) {
+                    responseData = await response.json();
+                } else {
+                    const text = await response.text();
+                    responseData = { status: response.ok ? 'success' : 'error', message: text };
                 }
 
+                if (!response.ok) {
+                    throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
+                }
 
-                const responseData = await response.json();
-                 displayResponse(responseData);
+                displayResponse(responseData, 'success');
             } catch (error) {
                 console.error('Error sending code:', error);
-                displayResponse({ error: 'Failed to send code.', details: error.message }, true);
+                displayResponse({ 
+                    status: 'error',
+                    message: 'Failed to send code',
+                    details: error.message 
+                }, 'error');
+            } finally {
+                setLoading(false);
             }
         }
 
-      function displayResponse(data, isError = false) {
-           const responseElement = document.getElementById('response');
-           responseElement.textContent = JSON.stringify(data, null, 2);
-           if(isError) {
-              responseElement.classList.add('error');
-           } else {
-               responseElement.classList.remove('error');
-           }
-       }
+        function displayResponse(data, type = 'info') {
+            const responseElement = document.getElementById('response');
+            responseElement.textContent = JSON.stringify(data, null, 2);
+            responseElement.className = type;
+        }
     </script>
 </body>
 </html>
