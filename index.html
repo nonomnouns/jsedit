@@ -107,10 +107,12 @@
 
         .error {
             color: #dc2626;
+            border-color: #dc2626;
         }
 
         .success {
             color: #059669;
+            border-color: #059669;
         }
 
         .loading {
@@ -155,6 +157,16 @@
     <script>
         let editor;
         let isLoading = false;
+
+        // URL validation function
+        function isValidUrl(url) {
+            try {
+                new URL(url);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             editor = CodeMirror(document.getElementById('editor'), {
@@ -201,13 +213,19 @@
                 return;
             }
 
+            if (!isValidUrl(url)) {
+                displayResponse({ error: 'Invalid URL format' }, 'error');
+                return;
+            }
+
             try {
                 setLoading(true);
                 displayResponse({ status: 'Loading code...' });
 
                 const response = await fetch(url, {
                     headers: {
-                        'Accept': 'application/javascript, text/javascript, text/plain'
+                        'Accept': 'application/javascript, text/javascript, text/plain',
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
 
@@ -217,13 +235,20 @@
 
                 const code = await response.text();
                 editor.setValue(code);
-                displayResponse({ status: 'success', message: 'Code loaded successfully' }, 'success');
+                displayResponse({ 
+                    status: 'success',
+                    message: 'Code loaded successfully',
+                    length: code.length,
+                    lines: code.split('\n').length
+                }, 'success');
             } catch (error) {
                 console.error('Error loading code:', error);
                 displayResponse({ 
                     status: 'error',
+                    name: error.name,
                     message: 'Failed to load code',
-                    details: error.message 
+                    details: error.message,
+                    stack: error.stack?.split('\n')
                 }, 'error');
             } finally {
                 setLoading(false);
@@ -239,9 +264,28 @@
                 return;
             }
 
+            if (!isValidUrl(url)) {
+                displayResponse({ error: 'Invalid URL format' }, 'error');
+                return;
+            }
+
             const code = editor.getValue();
             if (!code.trim()) {
                 displayResponse({ error: 'No code to send.' }, 'error');
+                return;
+            }
+
+            // Basic JavaScript validation
+            try {
+                new Function(code);
+            } catch (e) {
+                displayResponse({ 
+                    status: 'error',
+                    name: e.name,
+                    message: 'JavaScript syntax error',
+                    details: e.message,
+                    line: e.lineNumber
+                }, 'error');
                 return;
             }
 
@@ -253,6 +297,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: JSON.stringify({ code }),
                 });
@@ -264,7 +309,11 @@
                     responseData = await response.json();
                 } else {
                     const text = await response.text();
-                    responseData = { status: response.ok ? 'success' : 'error', message: text };
+                    responseData = { 
+                        status: response.ok ? 'success' : 'error',
+                        message: text,
+                        statusCode: response.status
+                    };
                 }
 
                 if (!response.ok) {
@@ -276,8 +325,10 @@
                 console.error('Error sending code:', error);
                 displayResponse({ 
                     status: 'error',
+                    name: error.name,
                     message: 'Failed to send code',
-                    details: error.message 
+                    details: error.message,
+                    stack: error.stack?.split('\n')
                 }, 'error');
             } finally {
                 setLoading(false);
